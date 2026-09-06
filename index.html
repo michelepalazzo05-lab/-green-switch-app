@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f2a1d">
+<title>GREEN SWITCH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="login" class="login">
+  <div class="card">
+    <div class="mark">⏻</div>
+    <small>ERASMUS+ • GREEN SWITCH</small>
+    <h1>Make the invisible <em>visible.</em></h1>
+    <p>Turn sustainable choices into actions, points, and an impact you can actually see.</p>
+    <div class="scrollCue" aria-hidden="true">
+      <span>FILL IN YOUR DETAILS BELOW</span>
+      <svg viewBox="0 0 24 24"><path d="M12 4v14m0 0l-6-6m6 6l6-6" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <form id="form">
+      <input id="first" placeholder="First name" autocomplete="given-name">
+      <input id="last" placeholder="Last name" autocomplete="family-name">
+      <input id="class" placeholder="Class, e.g. 4A" autocomplete="off">
+      <input id="school" placeholder="School" list="schools" autocomplete="off">
+      <datalist id="schools">
+        <option value="Liceo Scientifico Aristotele">
+        <option value="Liceo Etu-töölö">
+      </datalist>
+      <input id="pass" type="password" placeholder="Password (min. 4 characters)" autocomplete="new-password" minlength="4">
+      <button type="button" id="forgotPass" class="linklike">Forgot your password?</button>
+      <button>FLIP THE SWITCH →</button>
+      <span id="formError" class="formError" hidden></span>
+    </form>
+    <span class="note">Prototype profile. Your progress is saved on this device; the leaderboard is shared with the whole school. Your password is stored only on this device and is never sent online — if you forget it you can reset it, but that also resets your points for this profile.</span>
+    <div class="scrollCue scrollCueBottom" aria-hidden="true">
+      <span>KEEP SCROLLING</span>
+      <svg viewBox="0 0 24 24"><path d="M12 4v14m0 0l-6-6m6 6l6-6" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+  <div class="cover">
+    <div class="ring"></div>
+    <b>THE<br><strong>WALL</strong><br>OF<br>SWITCHES</b>
+    <p>SEE → CHANGE → INVOLVE → MEASURE → MAKE IT VISIBLE → SHARE → REPEAT</p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <b>GREEN <i>SWITCH</i></b>
+    <span id="globalCounter">🟢 — switches turned on across the network</span>
+    <button id="exit">Log out</button>
+  </header>
+
+  <nav>
+    <button data-p="home"><i>🏠</i>Home</button>
+    <button data-p="missions"><i>🎯</i>Missions</button>
+    <button data-p="rankings"><i>🏆</i>Leaderboard</button>
+    <button data-p="wall"><i>🖼️</i>Wall</button>
+    <button data-p="profile"><i>👤</i>Profile</button>
+  </nav>
+
+  <main>
+    <section id="home" class="page">
+      <div class="hero">
+        <div>
+          <small>WELCOME BACK</small>
+          <h2 id="welcome">Ready to make a change?</h2>
+          <p id="streakMsg">Every small choice can become a measurable, collective impact.</p>
+        </div>
+        <div class="streak">
+          <div id="streakEmoji" class="flame">🔥</div>
+          <div><b id="streak">1</b><small>DAYS<br>IN A ROW</small></div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div><span class="ic">🌿</span>Your points<b id="points">0</b><small>GREEN POINTS</small></div>
+        <div><span class="ic">📶</span>Rank<b id="rankpos">#—</b><small>AT SCHOOL</small></div>
+        <div><span class="ic">✅</span>Switches<b id="switches">0</b><small>COMPLETED</small></div>
+        <div><span class="ic">💫</span>Impact<b id="impact">0</b><small>ACTIONS</small></div>
+      </div>
+
+      <div id="eventBanner" class="eventBanner" hidden></div>
+
+      <div class="head"><h3>Today's move</h3><button data-go="missions">See all →</button></div>
+      <div id="featured" class="mission featured"></div>
+
+      <div class="head"><h3>Weekly streak</h3></div>
+      <div class="progress">
+        <b id="week">0 / 7 days</b>
+        <div class="bar"><i id="bar"></i></div>
+        <div id="days" class="days"></div>
+      </div>
+
+      <div class="impactBox">
+        <div class="impactHead"><span class="ic">🌍</span><b>Your impact, made visible</b></div>
+        <div class="impactGrid">
+          <div><b id="co2Saved">0</b><small>KG OF CO₂ SAVED (ESTIMATE)</small></div>
+          <div><b id="bottlesSaved">0</b><small>PLASTIC BOTTLES AVOIDED (ESTIMATE)</small></div>
+        </div>
+        <p class="impactNote">A simplified estimate, meant to tell the story of the Erasmus+ project's impact in concrete terms — not a precise scientific figure.</p>
+        <button id="shareBtn" class="shareBtn">📤 Share your impact</button>
+      </div>
+    </section>
+
+    <section id="missions" class="page">
+      <small>CHOOSE YOUR CHALLENGE</small>
+      <h2>Make your SWITCH.</h2>
+      <p>One action. One number. A result you can see.</p>
+      <p id="missionsInfo" class="missionsInfo"></p>
+      <div id="missionGrid" class="grid"></div>
+    </section>
+
+    <section id="rankings" class="page">
+      <small>THE GREEN LEAGUE</small>
+      <h2>Leaderboard.</h2>
+      <p>Real scores from students who actually made a switch — shared across the whole school.</p>
+      <div class="switcher">
+        <button class="active" data-r="students">Students</button>
+        <button data-r="classes">Classes</button>
+        <button data-r="schools">Schools</button>
+      </div>
+      <div id="podium" class="podium"></div>
+      <div id="ranking" class="ranking"></div>
+      <div class="awards">
+        <div>🏅 <b>GREEN LEAGUE</b><small>Highest total score</small></div>
+        <div>🌍 <b>IMPACT AWARD</b><small>Biggest impact outside school</small></div>
+        <div>💡 <b>INNOVATION AWARD</b><small>Most original solution</small></div>
+        <div>❤️ <b>PASS IT ON</b><small>Longest participation chain</small></div>
+      </div>
+    </section>
+
+    <section id="wall" class="page">
+      <small>MAKE IT VISIBLE</small>
+      <h2>THE WALL OF SWITCHES.</h2>
+      <p>The artwork grows with every sustainable action.</p>
+      <div class="wall">
+        <div>WE DON'T SEE<br>THE WASTE.<br><em>WE SEE THE SWITCH.</em></div>
+        <small><b id="wallCount">0</b><br>SWITCH</small>
+      </div>
+      <div class="upload">
+        <div><b>Add a photo or video as proof</b><p>Show a recycling action, reuse, clean-up or any sustainable action. A short video works too.</p></div>
+        <label>+ PHOTO OR VIDEO<input id="photo" type="file" accept="image/*,video/*"></label>
+      </div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+
+    <section id="profile" class="page">
+      <div class="profile">
+        <div id="avatar">GS</div>
+        <div>
+          <small>YOUR GREEN ID</small>
+          <h2 id="pname">Student</h2>
+          <p id="pmeta"></p>
+        </div>
+      </div>
+
+      <small>BADGES</small>
+      <h3>Collect your proof of impact.</h3>
+      <div class="badges">
+        <div data-badge="starter">🌱<b>Green Starter</b><small>First mission</small></div>
+        <div data-badge="chain" data-locked="1">🔗<b>Chain Builder</b><small>Requires the full network</small></div>
+        <div data-badge="community" data-locked="1">🌍<b>Community Class</b><small>Requires the full network</small></div>
+        <div data-badge="waste">♻️<b>Waste Warrior</b><small>Waste mission</small></div>
+        <div data-badge="mobility">🚲<b>Mobility Champion</b><small>Mobility mission</small></div>
+        <div data-badge="innovation" data-locked="1">💡<b>Innovation Class</b><small>Requires the full network</small></div>
+        <div data-badge="league">🏆<b>Green League</b><small>#1 at school</small></div>
+      </div>
+
+      <div class="head"><h3>Data</h3></div>
+      <button id="resetBtn" class="danger">Reset my progress</button>
+    </section>
+  </main>
+</div>
+
+<div id="toast"></div>
+<div id="confetti"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

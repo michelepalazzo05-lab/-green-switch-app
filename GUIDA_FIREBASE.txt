@@ -1,0 +1,100 @@
+COME COLLEGARE LA CLASSIFICA VERA (Firebase — gratis, ~10 minuti)
+====================================================================
+
+Senza questo passaggio l'app funziona lo stesso (punti, missioni, foto),
+ma la pagina "Classifiche" mostra solo un avviso, perché non esiste ancora
+un posto condiviso dove salvare i punteggi di TUTTI gli studenti.
+
+Ti basta fare questo UNA VOLTA SOLA (puoi farlo tu, non serve che lo rifaccia
+ogni studente).
+
+
+PASSO 1 — Crea il progetto Firebase
+------------------------------------
+1. Vai su https://console.firebase.google.com
+2. Accedi con un account Google (va bene anche quello della scuola).
+3. Clicca "Aggiungi progetto" (o "Add project").
+4. Dagli un nome, es: green-switch-aristotele
+5. Quando chiede di Google Analytics, puoi disattivarlo ("non abilitare"):
+   non ti serve per questo progetto.
+6. Clicca "Crea progetto" e aspetta il caricamento.
+
+
+PASSO 2 — Crea il database
+------------------------------------
+1. Nel menu a sinistra, sotto "Build", clicca "Realtime Database".
+2. Clicca "Crea database".
+3. Scegli la posizione del server (va benissimo quella proposta di default,
+   es. Europe/Belgio) e premi Avanti.
+4. Alla domanda sulle regole di sicurezza scegli "Inizia in modalità test"
+   (test mode). Premi "Abilita".
+
+
+PASSO 3 — Apri le regole per il progetto scolastico
+------------------------------------
+La modalità test scade dopo 30 giorni. Per non doverci pensare più, sostituisci
+le regole con quelle qui sotto (adatte a un prototipo scolastico, SENZA dati
+sensibili — nome, cognome, classe e scuola sono gli unici dati salvati):
+
+1. Nella pagina "Realtime Database", clicca sulla scheda "Regole" (Rules).
+2. Cancella tutto e incolla questo:
+
+{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
+
+3. Clicca "Pubblica" (Publish).
+
+Nota: questo rende il database leggibile e scrivibile da chiunque conosca
+l'indirizzo — va benissimo per un progetto scolastico Erasmus+ con solo nomi,
+classi e punteggi, ma NON usarlo per dati personali sensibili o delicati.
+
+
+PASSO 4 — Copia l'indirizzo del database
+------------------------------------
+1. Torna alla scheda "Dati" (Data) di Realtime Database.
+2. In alto vedrai un indirizzo tipo:
+   https://green-switch-aristotele-default-rtdb.europe-west1.firebasedatabase.app
+3. Copia questo indirizzo per intero.
+
+
+PASSO 5 — Incollalo nell'app
+------------------------------------
+1. Apri il file app.js (con un editor di testo, anche il Blocco Note va bene,
+   oppure direttamente su GitHub cliccando sulla matita "modifica").
+2. Cerca questa riga, vicino all'inizio del file:
+
+   const FIREBASE_DB_URL='INSERISCI_QUI_URL_FIREBASE';
+
+3. Sostituisci il testo tra apici con il tuo indirizzo, ad esempio:
+
+   const FIREBASE_DB_URL='https://green-switch-aristotele-default-rtdb.europe-west1.firebasedatabase.app';
+
+4. Salva il file e carica la nuova versione su GitHub (o fai il commit se usi
+   GitHub Desktop / l'editor online).
+
+
+PASSO 6 — Verifica che funzioni
+------------------------------------
+1. Apri il sito (Ctrl+Shift+R per svuotare la cache).
+2. Accedi con un profilo e completa uno switch.
+3. Torna sulla console Firebase → Realtime Database → Dati: dovresti vedere
+   comparire un nodo "students" con il tuo profilo dentro.
+4. Nella pagina "Classifiche" del sito dovresti ora vedere il tuo nome invece
+   dell'avviso "database non collegato".
+
+Da questo momento la classifica è VERA: ogni studente che usa il sito, da
+qualunque telefono o computer, comparirà nella stessa classifica condivisa.
+
+
+DOMANDE FREQUENTI
+------------------------------------
+- "Costa qualcosa?" No, il piano gratuito di Firebase (Spark) è più che
+  sufficiente per un progetto scolastico con qualche centinaio di studenti.
+- "Posso cambiare idea e chiudere il database dopo?" Sì, in qualsiasi momento
+  puoi tornare a FIREBASE_DB_URL='INSERISCI_QUI_URL_FIREBASE' per disattivarlo.
+- "E se non funziona?" Controlla di aver copiato l'indirizzo per intero (con
+  https:// davanti) e di aver pubblicato le regole al Passo 3.
