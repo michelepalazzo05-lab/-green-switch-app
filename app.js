@@ -369,7 +369,7 @@ function impactStats(p){
    notice instead of scores, because no shared database is connected yet.
    Full instructions are in the GUIDA_FIREBASE.txt file included in the zip.
    ========================================================================= */
-const FIREBASE_DB_URL='INSERISCI_QUI_URL_FIREBASE';
+const FIREBASE_DB_URL='https://greenswitch-3446c-default-rtdb.europe-west1.firebasedatabase.app';
 
 function cloudConfigured(){
   return typeof FIREBASE_DB_URL==='string' && FIREBASE_DB_URL.startsWith('https://') && !FIREBASE_DB_URL.includes('INSERISCI_QUI');
