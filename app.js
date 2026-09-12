@@ -825,6 +825,11 @@ function complete(id){
 }
 
 // ---------- bindings ----------
+if($('loginScrollBtn')){
+  $('loginScrollBtn').onclick=()=>{
+    window.scrollBy({top:window.innerHeight*0.6,left:0,behavior:'smooth'});
+  };
+}
 $('form').onsubmit=async e=>{
   e.preventDefault();
   let f=$('first').value.trim(),l=$('last').value.trim(),c=$('class').value.trim(),sc=$('school').value.trim(),pass=$('pass').value;
