@@ -51,8 +51,9 @@
     try{
       if(!cloudConfigured()||!crypto.subtle)throw new Error('A secure HTTPS connection and the shared Firebase database are required.');
       school=schoolName(p.sc);
-      const schoolId=await digest(school.toLowerCase()),id=GreenCloud.uid();
+      const schoolId=p.schoolId||await digest(school.toLowerCase()),id=GreenCloud.uid();
       if(!id||p.uid!==id)throw new Error('Sign in to access your school board.');
+      if(!await syncProfileToCloud(p))throw new Error('Your profile could not be saved online. Reconnect and sign in again.');
       if(current!==session)return;
       actor={id,name:p.f+' '+(p.l[0]||'')+'.',className:p.c};
       store=GreenExchangeStore.createStore({baseUrl:FIREBASE_DB_URL,schoolId,fetchImpl:GreenCloud.fetch});
