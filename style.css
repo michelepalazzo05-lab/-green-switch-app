@@ -17,10 +17,38 @@
   --radius:18px;
 }
 
+/* Switch Exchange follows the existing Green Switch palette and spacing. */
+.exchangeHero{background:var(--brand);color:#fff;border-radius:22px;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;gap:22px}
+.exchangeHero small{color:var(--accent);font-size:11px;letter-spacing:1.4px;font-weight:700}
+.exchangeHero h2{font-size:32px;letter-spacing:-.5px;margin:10px 0 12px}
+.exchangeHero p{color:var(--sage);line-height:1.6;margin:0}
+#exchange button,#exchangeDetail button{border:0;border-radius:10px;padding:12px 16px;font-weight:700;min-height:44px;background:var(--brand);color:#fff}
+#exchange button.exchangePrimary,#exchangeDetail button.exchangePrimary{background:var(--accent);color:var(--ink)}
+#exchange button.exchangeSecondary,#exchangeDetail button.exchangeSecondary{background:var(--sage);color:var(--ink)}
+#exchange button:disabled,#exchangeDetail button:disabled{opacity:.5;cursor:wait}
+.exchangeSummary{display:flex;align-items:center;gap:14px;background:var(--sage);padding:16px 20px;border-radius:14px;margin:16px 0}
+.exchangeSummary>span{font-size:25px}.exchangeSummary b{font-size:24px}.exchangeSummary small{display:block;color:var(--muted);font-size:12px;margin-top:5px}
+.exchangeSchoolRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px}.exchangeSchoolRow span{color:var(--muted)}.exchangeSchoolRow button{margin-left:auto}
+.exchangeMessage{font-size:13px;color:var(--brand-2);line-height:1.5;min-height:20px}.exchangeMessage.error{color:var(--warn);background:var(--warn-bg);padding:12px;border-radius:10px}
+.exchangeForm{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;margin:20px 0}.exchangeForm h3{margin:0 0 20px}
+.exchangeFields{display:grid;grid-template-columns:1fr 1fr;gap:15px}.exchangeFull{grid-column:1/-1}
+#exchange label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600}
+#exchange input,#exchange select,#exchange textarea{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font:inherit;font-size:16px;min-width:0;width:100%}
+.exchangeActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.exchangeHint{font-size:12px;color:var(--muted);line-height:1.6}
+.exchangeTools{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:24px 0 18px}.exchangeTools>label{flex:1;min-width:140px}.exchangeTabs{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
+#exchange .exchangeTabs button{background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:30px}#exchange .exchangeTabs button[aria-pressed=true]{background:var(--brand);color:#fff;border-color:var(--brand)}
+.exchangeGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.exchangeCard{background:var(--card);border:1px solid var(--line);border-radius:17px;overflow:hidden;display:flex;flex-direction:column}.exchangeCard>img{width:100%;height:170px;object-fit:cover}.exchangeArt{height:130px;background:var(--sage);display:grid;place-items:center;font-size:48px}.exchangeCardBody{padding:20px;display:flex;flex-direction:column;gap:11px;flex:1}.exchangeCardBody h3{font-size:18px;margin:0;overflow-wrap:anywhere}.exchangeCardBody p{font-size:13px;color:var(--muted);line-height:1.5;margin:0;overflow-wrap:anywhere}.exchangeCardBody small{font-size:11px;color:var(--muted)}.exchangeCardBody .exchangeStatus,.exchangeStatus{font-weight:700;color:var(--brand-2);text-transform:uppercase;letter-spacing:.4px;font-size:11px}.exchangeCardBody button{margin-top:auto;align-self:flex-start}.exchangeDescription{white-space:pre-wrap}
+.exchangeEmpty{grid-column:1/-1;padding:32px;text-align:center;border:1px solid var(--line);border-radius:16px;background:var(--card)}.exchangeEmpty p{color:var(--muted);font-size:14px}
+#exchangeDetail{border:1px solid var(--line);border-radius:20px;padding:24px;background:var(--card);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:85vh;overflow:auto}#exchangeDetail::backdrop{background:#0f2a1d99}#exchangeCloseDetail{display:block;margin-left:auto}#exchangeDetail h3{font-size:23px;overflow-wrap:anywhere}#exchangeDetail p{line-height:1.6;overflow-wrap:anywhere}
+@media(max-width:800px){.exchangeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.exchangeHero{flex-direction:column;align-items:flex-start;padding:24px}.exchangeHero h2{font-size:28px}.exchangeFields{grid-template-columns:1fr}.exchangeForm{padding:18px}}
+@media(max-width:480px){.exchangeGrid{grid-template-columns:1fr}.exchangeTabs{width:100%}.exchangeSchoolRow button{margin-left:0}}
+
 *{box-sizing:border-box}
 html{scroll-behavior:auto}
 body{margin:0;font-family:'Work Sans',Arial,sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased}
 h1,h2,h3,b,strong{font-family:'Sora',Arial,sans-serif}
+[hidden]{display:none!important}
 button,input{font:inherit}
 button{cursor:pointer}
 
@@ -33,7 +61,9 @@ button{cursor:pointer}
 .card em{font-style:normal;color:var(--brand-2)}
 .card p{font-size:17px;line-height:1.55;opacity:.68;max-width:440px}
 .card form{display:grid;gap:11px;margin-top:20px;max-width:460px}
-.card input{padding:14px 15px;border:1.5px solid var(--line);border-radius:12px;background:#fff;transition:border-color .15s}
+.card input,.card select{padding:14px 15px;border:1.5px solid var(--line);border-radius:12px;background:#fff;transition:border-color .15s;font:inherit;min-width:0}
+.authProviders{display:grid;gap:8px;max-width:460px;margin-top:20px}.authProviders button{padding:12px;border:1px solid var(--line);border-radius:12px;background:white;color:var(--ink);font:inherit;font-weight:600}.authProviders button:disabled{opacity:.55;cursor:not-allowed}
+.exchangeHandover{display:flex;gap:10px;align-items:center;margin:16px 0;font-size:14px}.exchangeHandover input{width:20px;height:20px;flex:none}button:disabled{cursor:not-allowed}
 .card input:focus{outline:none;border-color:var(--brand-2)}
 .card form button{border:0;border-radius:12px;padding:15px;background:var(--brand);color:#fff;font-weight:700;font-size:15px;letter-spacing:.2px;transition:transform .12s,background .15s}
 .card form button:hover{background:var(--brand-2)}
