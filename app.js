@@ -259,7 +259,7 @@ const missions=[
 // not on the device), so there's always something new to check when
 // students come back, and by the time the pool has rotated fully every
 // mission has had its turn.
-function dayOfYear(d){return Math.floor((d-new Date(d.getFullYear(),0,0))/86400000)}
+function dayOfYear(d){return Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(d.getFullYear(),0,0))/86400000)}
 const DAILY_MISSION_COUNT=10;
 function dailyMissionSet(date){
   let n=missions.length;
@@ -284,7 +284,7 @@ function missionBaseId(id){
 }
 function missionDone(p,mission,date){
   let instance=missionInstanceId(mission,date);
-  return p.done.includes(instance) || p.done.includes(mission[0]); // old versions stay compatible
+  return p.done.includes(instance);
 }
 
 // ---------- special events ----------
@@ -352,7 +352,7 @@ const impactFactors={
 function impactStats(p){
   let co2=0,bottles=0;
   (p.done||[]).forEach(id=>{
-    let f=impactFactors[missionBaseId(id)];
+    let f=impactFactors[missionBaseId(id).split('-')[0]];
     if(f){co2+=f.co2;bottles+=f.bottles;}
   });
   return {co2:Math.round(co2*10)/10,bottles};
@@ -379,46 +379,88 @@ function fbKey(key){return key.replace(/[.#$\[\]\/\s]/g,'_')}
 let cloudStudents=null;       // last real list loaded from the database
 let cloudState='idle';        // idle | loading | ready | error | unconfigured
 
+let profileSync=null;
+function mergeProgress(local,remote){
+  if(!remote)return {...local,done:[...new Set(local.done||[])]};
+  const localReset=local.resetAt||0,remoteReset=remote.resetAt||0;
+  const chosen=localReset>remoteReset?local:remoteReset>localReset?remote:null;
+  const done=chosen?[...(chosen.done||[])]:[...new Set([...(local.done||[]),...(remote.done||[])])];
+  const result={...local,...remote,done,resetAt:Math.max(localReset,remoteReset)};
+  result.role=remote.role||local.role||'student';
+  result.points=0;result.switches=done.length;result.impact=done.length;
+  for(const id of done){
+    const match=/@(\d{4})-(\d{2})-(\d{2})$/.exec(id);
+    const date=match?new Date(+match[1],+match[2]-1,+match[3]):new Date();
+    const m=missions.find(m=>m[0]===missionBaseId(id));
+    if(m)result.points+=Math.round(m[5]*pointMultiplier(m[0],match?activeEvents(date):[]));
+    else{const event=specialEvents.find(e=>e.bonus&&id.startsWith('event-'+e.id+'-'));if(event)result.points+=event.bonus;}
+  }
+  if(result.role==='teacher')Object.assign(result,{points:0,switches:0,impact:0,done:[]});
+  return result;
+}
 async function syncProfileToCloud(p){
-  if(!cloudConfigured()||!db.currentKey) return;
-  try{
-    await fetch(`${FIREBASE_DB_URL}/students/${fbKey(db.currentKey)}.json`,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      // Note: the password hash is deliberately NEVER included here. The
-      // free-tier database used by GUIDA_FIREBASE.txt is publicly readable,
-      // so passwords must stay local to the device only.
-      body:JSON.stringify({
-        localKey:db.currentKey,
-        f:p.f,l:p.l,c:p.c,sc:p.sc,
-        points:p.points,switches:p.switches,impact:p.impact,
-        updatedAt:Date.now()
-      })
-    });
-  }catch(e){/* offline: local data is still safe, we'll retry later */}
+  if(!p.uid||GreenCloud.uid()!==p.uid)return false;
+  p.pendingSync=true;save();
+  if(profileSync)return profileSync;
+  const key=db.currentKey,uid=p.uid;
+  profileSync=(async()=>{
+    try{
+      for(let attempt=0;attempt<5;attempt++){
+        const before=await GreenCloud.fetch(FIREBASE_DB_URL+'/users/'+uid+'.json',{headers:{'X-Firebase-ETag':'true'}});
+        if(!before.ok)throw new Error('Profile read rejected.');
+        const remote=await before.json(),version=JSON.stringify({done:p.done,resetAt:p.resetAt});
+        const merged=mergeProgress(p,remote);
+        const privateData={f:p.f,l:p.l,c:p.c,sc:p.sc,uid,schoolId:p.schoolId,role:merged.role,done:merged.done,points:merged.points,switches:merged.switches,impact:merged.impact,resetAt:merged.resetAt,updatedAt:Date.now()};
+        const write=await GreenCloud.fetch(FIREBASE_DB_URL+'/users/'+uid+'.json',{method:'PUT',headers:{'Content-Type':'application/json','if-match':before.headers.get('etag')},body:JSON.stringify(privateData)});
+        if(write.status===412)continue;
+        if(!write.ok)throw new Error('Profile save rejected.');
+        await GreenCloud.json('students/'+uid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid,f:p.f,l:(p.l[0]||'')+'.',c:p.c,sc:p.sc,schoolId:p.schoolId,role:merged.role,points:merged.points,switches:merged.switches,updatedAt:Date.now()})});
+        if(db.currentKey!==key)return true;
+        if(version!==JSON.stringify({done:p.done,resetAt:p.resetAt}))continue;
+        Object.assign(p,merged,{pass:p.pass,pendingSync:false});save();render();return true;
+      }
+      throw new Error('Sync conflict. Please retry.');
+    }catch(e){if(db.currentKey===key)toast('Saved on this device. Cloud sync is pending; reconnect and retry.',true);return false;}
+  })().finally(()=>profileSync=null);
+  return profileSync;
 }
 
 async function loadCloudStudents(){
   if(!cloudConfigured()){cloudState='unconfigured';renderRankingArea();updateRankStat();return}
   cloudState='loading';renderRankingArea();
   try{
-    let r=await fetch(`${FIREBASE_DB_URL}/students.json`);
+    let r=await GreenCloud.fetch(`${FIREBASE_DB_URL}/students.json`);
     if(!r.ok) throw new Error('bad status');
     let d=await r.json();
-    cloudStudents=d?Object.values(d):[];
+    cloudStudents=d?Object.values(d).filter(s=>s&&s.role!=='teacher'):[];
     cloudState='ready';
+    formatGlobalCount(cloudStudents.reduce((sum,s)=>sum+Math.max(0,Number(s.switches)||0),0));
   }catch(e){
     cloudState='error';
+    $('globalCounter').textContent='Shared switches · connection unavailable';
   }
   renderRankingArea();
   updateRankStat();
 }
 
 // ---------- local storage: several profiles on the same device ----------
-function profileKey(f,l,c,sc){return (f+'|'+l+'|'+c+'|'+sc).toLowerCase().trim()}
+function profileKey(f,l,c,sc,role='student'){return (f+'|'+l+'|'+c+'|'+sc).toLowerCase().trim()+(role==='teacher'?'|teacher':'')}
 
 function freshProfile(f,l,c,sc,passHash){
-  return {f,l,c,sc,pass:passHash||null,points:0,streak:1,switches:0,impact:0,done:[],days:[0,0,0,0,0,0,0]};
+  return {f,l,c,sc,pass:passHash||null,points:0,streak:0,switches:0,impact:0,done:[],days:[0,0,0,0,0,0,0]};
+}
+
+function calendarDay(date){return Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())/86400000;}
+function updateActivity(p,today=new Date()){
+  const dates=new Set((p.done||[]).map(id=>{
+    const match=/@(\d{4})-(\d{2})-(\d{2})$/.exec(id);
+    return match?Date.UTC(+match[1],+match[2]-1,+match[3])/86400000:null;
+  }).filter(day=>day!==null));
+  const current=calendarDay(today),weekStart=current-(today.getDay()+6)%7;
+  p.days=Array.from({length:7},(_,i)=>dates.has(weekStart+i)?1:0);
+  let cursor=dates.has(current)?current:current-1,count=0;
+  while(dates.has(cursor)){count++;cursor--;}
+  p.streak=count;
 }
 
 // Simple password hashing (SHA-256) so the raw password is never kept in
@@ -467,18 +509,10 @@ function formatGlobalCount(n){
   $('globalCounter').textContent=`🟢 ${n.toLocaleString('en-US')} switches turned on across the network`;
 }
 async function loadGlobalCount(){
-  try{
-    let r=await fetch(`${COUNTER_BASE}/get/${COUNTER_KEY}`);
-    if(r.ok){let d=await r.json();formatGlobalCount(parseInt(d.value)||0);return}
-  }catch(e){}
-  $('globalCounter').textContent='🟢 switches turned on across the network';
+  if(cloudState==='ready')formatGlobalCount((cloudStudents||[]).reduce((sum,s)=>sum+Math.max(0,Number(s.switches)||0),0));
+  else $('globalCounter').textContent='Shared switches · loading scores…';
 }
-async function hitGlobalCount(){
-  try{
-    let r=await fetch(`${COUNTER_BASE}/hit/${COUNTER_KEY}`);
-    if(r.ok){let d=await r.json();formatGlobalCount(parseInt(d.value)||0)}
-  }catch(e){}
-}
+async function hitGlobalCount(){ /* Total is derived from saved shared profiles. */ }
 
 /* ---------- SCROLL FIX: always force the view back to the top, reliably
    even on mobile (keyboard closing, layout height changing after login).
@@ -495,17 +529,25 @@ function forceScrollTop(){
 // ---------- boot / navigation ----------
 function boot(){
   let p=currentProfile();
+  if(p&&(!p.uid||GreenCloud.key()!==db.currentKey)){db.currentKey=null;save();p=null;}
   if(!p){$('login').hidden=false;$('app').hidden=true;forceScrollTop();return}
   $('login').hidden=true;$('app').hidden=false;
   $('welcome').textContent=`Ready to make a change, ${p.f}!`;
   $('pname').textContent=p.f+' '+p.l;
   $('pmeta').textContent=p.c+' • '+p.sc;
   $('avatar').textContent=(p.f[0]+p.l[0]).toUpperCase();
+  const teacher=p.role==='teacher';
+  $('teacherNotice').hidden=!teacher;
+  document.querySelector('#profile .badges').hidden=teacher;
+  $('photo').disabled=teacher;$('resetBtn').hidden=teacher;$('shareBtn').hidden=teacher;
+  document.querySelector('.upload').hidden=teacher;
   render();
   page('home');
   forceScrollTop();
+  sharedWall=[];loadSharedWall();
   loadGlobalCount();
   loadCloudStudents();
+  syncProfileToCloud(p).then(loadCloudStudents);
 }
 
 function page(p){
@@ -514,6 +556,7 @@ function page(p){
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.p===p));
   forceScrollTop();
   if(p==='rankings') loadCloudStudents();
+  if(p==='wall')loadSharedWall();
 }
 
 // ---------- rendering ----------
@@ -538,6 +581,7 @@ function streakEmoji(n){
 
 function render(){
   let p=currentProfile(); if(!p) return;
+  updateActivity(p);
   animateNum('points',p.points);
   $('switches').textContent=p.switches;
   $('impact').textContent=p.impact;
@@ -583,6 +627,12 @@ function render(){
 
   renderGallery();
   renderBadges();
+  if(p.role==='teacher'){
+    $('welcome').textContent='School overview, '+p.f;
+    $('pmeta').textContent='Teacher · '+p.sc;
+    $('rankpos').textContent='Not ranked';
+    document.querySelectorAll('#missionGrid button,#featured button').forEach(b=>{b.disabled=true;b.textContent='STUDENT ACTIVITY · VIEW ONLY';});
+  }
 }
 
 // Shows a banner on the Home page while at least one special event is
@@ -624,19 +674,19 @@ function animateNum(id,target){
 
 // ---------- real leaderboards (data aggregated from the Firebase database) ----------
 function studentsList(){
-  return (cloudStudents||[]).map(s=>({
+  return (cloudStudents||[]).filter(s=>!currentProfile()?.schoolId||s.schoolId===currentProfile().schoolId).map(s=>({
     name:(s.f||'?')+' '+(s.l||''),
     meta:(s.c||'')+' • '+(s.sc||''),
-    pts:s.points||0,
-    mine:s.localKey===db.currentKey
+    pts:Math.max(0,Number(s.points)||0),
+    mine:s.uid===currentProfile()?.uid
   })).sort((a,b)=>b.pts-a.pts);
 }
 function classesList(){
   let map={};
-  (cloudStudents||[]).forEach(s=>{
+  (cloudStudents||[]).filter(s=>!currentProfile()?.schoolId||s.schoolId===currentProfile().schoolId).forEach(s=>{
     let key=(s.c||'').toLowerCase()+'|'+(s.sc||'').toLowerCase();
     if(!map[key]) map[key]={name:s.c||'—',meta:s.sc||'',pts:0};
-    map[key].pts+=s.points||0;
+    map[key].pts+=Math.max(0,Number(s.points)||0);
   });
   let p=currentProfile();
   return Object.values(map).map(x=>({
@@ -649,7 +699,7 @@ function schoolsList(){
   (cloudStudents||[]).forEach(s=>{
     let key=(s.sc||'').toLowerCase();
     if(!map[key]) map[key]={name:s.sc||'—',meta:'',pts:0};
-    map[key].pts+=s.points||0;
+    map[key].pts+=Math.max(0,Number(s.points)||0);
   });
   let p=currentProfile();
   return Object.values(map).map(x=>({
@@ -662,6 +712,7 @@ function currentList(type){
 }
 
 function updateRankStat(){
+  if(currentProfile()?.role==='teacher'){$('rankpos').textContent='Not ranked';return;}
   if(cloudState!=='ready'){$('rankpos').textContent='#—';return}
   let a=studentsList();
   let idx=a.findIndex(x=>x.mine);
@@ -669,6 +720,7 @@ function updateRankStat(){
   $('rankpos').classList.toggle('top3',idx>-1&&idx<3);
 }
 
+function escapeText(value){return String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));}
 function renderRankingArea(){
   let podium=$('podium'), ranking=$('ranking');
   if(cloudState==='unconfigured'){
@@ -696,10 +748,10 @@ function renderRankingArea(){
   let order=[1,0,2].filter(i=>top3[i]);
   podium.innerHTML=order.map(i=>{
     let x=top3[i];
-    return `<div class="spot p${i+1}"><div class="rank">${i+1}</div><div class="name">${x.name}</div><div class="meta">${x.meta}</div><div class="pts">${x.pts} pt</div></div>`;
+    return `<div class="spot p${i+1}"><div class="rank">${i+1}</div><div class="name">${escapeText(x.name)}</div><div class="meta">${escapeText(x.meta)}</div><div class="pts">${x.pts} pt</div></div>`;
   }).join('');
   ranking.innerHTML=rest.length?rest.map((x,i)=>{
-    return `<div class="row${x.mine?' mine':''}"><b>#${i+4}</b><div><b>${x.name}</b><small>${x.meta}</small></div><span class="score">${x.pts} pt</span></div>`;
+    return `<div class="row${x.mine?' mine':''}"><b>#${i+4}</b><div><b>${escapeText(x.name)}</b><small>${escapeText(x.meta)}</small></div><span class="score">${x.pts} pt</span></div>`;
   }).join(''):'';
 }
 function rank(type){
@@ -716,8 +768,8 @@ function renderBadges(){
   let p=currentProfile(); if(!p) return;
   let earned={
     starter:p.switches>=1,
-    waste:p.done.some(id=>missionBaseId(id)==='waste'),
-    mobility:p.done.some(id=>missionBaseId(id)==='mobility'),
+    waste:p.done.some(id=>missionBaseId(id).split('-')[0]==='waste'),
+    mobility:p.done.some(id=>missionBaseId(id).split('-')[0]==='mobility'),
     league:isTopStudent()
   };
   document.querySelectorAll('[data-badge]').forEach(el=>{
@@ -731,26 +783,39 @@ function renderBadges(){
 }
 
 // ---------- gallery ----------
-function renderGallery(){
-  if(!db.photos.length){
-    $('gallery').innerHTML='<div class="empty">No photos or videos yet — be the first to add one to the Wall!</div>';
-    return;
-  }
-  $('gallery').innerHTML=db.photos.map((item,i)=>{
-    // db.photos used to contain only strings (older versions, photos only):
-    // we treat those as images to stay backward compatible.
-    let isVideo=item && typeof item==='object' && item.type==='video';
-    let src=item && typeof item==='object' ? item.src : item;
-    let media=isVideo
-      ?`<video src="${src}" controls playsinline preload="metadata"></video>`
-      :`<img src="${src}">`;
-    return `<figure>${media}<button onclick="removePhoto(${i})" aria-label="Remove">×</button></figure>`;
-  }).join('');
+let sharedWall=[],wallSession=0;
+function safeMedia(item){return item&&typeof item.src==='string'&&/^data:(image\/(jpeg|png|webp)|video\/(mp4|webm|ogg));base64,[A-Za-z0-9+/=]+$/.test(item.src);}
+async function loadSharedWall(){
+  const p=currentProfile(),current=++wallSession;
+  if(!p?.uid||!p.schoolId){sharedWall=[];return;}
+  try{
+    const data=await GreenCloud.json('wall/v1/'+p.schoolId);
+    if(current!==wallSession||currentProfile()?.uid!==p.uid)return;
+    const next=Object.entries(data||{}).map(([id,x])=>({...x,id})).filter(x=>!x.removedAt&&safeMedia(x)).sort((a,b)=>b.createdAt-a.createdAt);
+    if(JSON.stringify(sharedWall)!==JSON.stringify(next)){sharedWall=next;renderGallery();}
+  }catch(e){if(current===wallSession&&$('wall').classList.contains('active'))toast('The shared Wall could not be loaded. Reconnect and retry.',true);}
 }
-function removePhoto(i){
-  db.photos.splice(i,1);
-  save();
-  renderGallery();
+function renderGallery(){
+  const gallery=$('gallery');gallery.replaceChildren();
+  const legacy=(db.photos||[]).map((x,index)=>({...typeof x==='string'?{src:x,type:'image'}:x,index,local:true})).filter(safeMedia);
+  const list=[...sharedWall,...legacy];
+  if(!list.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='No photos or videos yet — add a real action to your school’s shared Wall.';gallery.append(empty);return;}
+  for(const item of list){
+    const figure=document.createElement('figure'),media=document.createElement(item.type==='video'?'video':'img');
+    media.src=item.src;if(item.type==='video'){media.controls=true;media.playsInline=true;media.preload='metadata';}else media.alt='Sustainable action shared on the Wall';
+    figure.append(media);
+    if(item.local){const note=document.createElement('figcaption');note.textContent='Earlier upload · saved on this device';figure.append(note);}
+    if(currentProfile()?.role!=='teacher'&&(item.local||item.ownerId===currentProfile()?.uid)){
+      const button=document.createElement('button');button.textContent='×';button.setAttribute('aria-label','Remove my upload');button.onclick=()=>removePhoto(item.local?item.index:item.id);figure.append(button);
+    }
+    gallery.append(figure);
+  }
+}
+async function removePhoto(id){
+  const p=currentProfile();if(!p||p.role==='teacher')return;
+  if(typeof id==='number'){db.photos.splice(id,1);save();renderGallery();return;}
+  try{await GreenCloud.json('wall/v1/'+p.schoolId+'/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({removedAt:Date.now()})});await loadSharedWall();}
+  catch(e){toast('Your upload could not be removed online. Please retry.',true);}
 }
 
 // ---------- feedback: toast + confetti ----------
@@ -780,6 +845,7 @@ function burstConfetti(){
 // ---------- actions ----------
 function complete(id){
   let p=currentProfile(); if(!p) return;
+  if(p.role==='teacher'){toast('Teacher profiles can monitor activities without earning points.',true);return;}
 
   let today=new Date();
   let events=activeEvents(today);
@@ -830,9 +896,12 @@ if($('loginScrollBtn')){
     window.scrollBy({top:window.innerHeight*0.6,left:0,behavior:'smooth'});
   };
 }
+let loginBusy=false;
 $('form').onsubmit=async e=>{
-  e.preventDefault();
-  let f=$('first').value.trim(),l=$('last').value.trim(),c=$('class').value.trim(),sc=$('school').value.trim(),pass=$('pass').value;
+  e.preventDefault();if(loginBusy)return;loginBusy=true;
+  const submit=$('form').querySelector('button:not([type])');submit.disabled=true;
+  try{
+  let role=$('role').value,f=$('first').value.trim(),l=$('last').value.trim(),c=$('class').value.trim()||(role==='teacher'?'Staff':''),sc=$('school').value.trim(),pass=$('pass').value;
   let err=$('formError');
   if(!f||!l||!c||!sc||!pass){
     err.textContent='Please fill in every field: first name, last name, class, school and password.';
@@ -844,51 +913,45 @@ $('form').onsubmit=async e=>{
     err.hidden=false;
     return;
   }
-  let key=profileKey(f,l,c,sc);
+  if(f.length>70||l.length>70||c.length>70||sc.length>120){err.textContent='Please shorten your name, class or school name.';err.hidden=false;return;}
+  let key=profileKey(f,l,c,sc,role);
   let existing=db.profiles[key];
   let passHash=await hashPassword(pass);
 
   if(existing){
-    if(existing.pass && existing.pass!==passHash){
+    if(!existing.uid&&existing.pass && existing.pass!==passHash){
       err.textContent='Wrong password for this profile. Try again, or use "Forgot your password?" below.';
       err.hidden=false;
       return;
     }
-    if(!existing.pass) existing.pass=passHash; // profile created before passwords existed
-  }else{
-    db.profiles[key]=freshProfile(f,l,c,sc,passHash);
+  }else if(!existing){
+    db.profiles[key]=freshProfile(f,l,c,sc,null);
+    db.profiles[key].role=role;
   }
 
+  try{
+    const uid=await GreenCloud.login(key,passHash);
+    const p=db.profiles[key];p.uid=uid;
+    p.schoolId=await GreenCloud.digest(sc.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase());
+    const remote=await GreenCloud.json('users/'+uid);
+    if(remote)Object.assign(p,mergeProgress(p,remote),{uid});
+    p.pass=null;
+  }catch(e){err.textContent=e.message;err.hidden=false;return;}
   err.hidden=true;
   let isNew=!existing;
   db.currentKey=key;
   save();
   boot();
-  if(isNew) syncProfileToCloud(db.profiles[key]);
+  syncProfileToCloud(db.profiles[key]).then(loadCloudStudents);
+  }finally{loginBusy=false;submit.disabled=false;}
 };
 
 $('forgotPass').onclick=()=>{
-  let f=$('first').value.trim(),l=$('last').value.trim(),c=$('class').value.trim(),sc=$('school').value.trim();
-  let err=$('formError');
-  if(!f||!l||!c||!sc){
-    err.textContent='Fill in your first name, last name, class and school first, then use "Forgot your password?".';
-    err.hidden=false;
-    return;
-  }
-  let key=profileKey(f,l,c,sc);
-  if(!db.profiles[key]){
-    err.textContent='No profile found with these details yet — just choose a password and log in normally.';
-    err.hidden=false;
-    return;
-  }
-  if(!confirm('Resetting your password will also reset this profile\u2019s points, switches and badges. Continue?')) return;
-  delete db.profiles[key];
-  save();
-  err.hidden=true;
-  toast('Profile reset. Enter a new password and log in again to start fresh.');
+  $('formError').textContent='For account recovery, contact the school project administrator. Resetting local data will not reset your online password.';
+  $('formError').hidden=false;
 };
 
-$('exit').onclick=()=>{db.currentKey=null;save();boot()};
+$('exit').onclick=()=>{GreenCloud.logout();db.currentKey=null;save();boot()};
 
 $('shareBtn').onclick=async()=>{
   let p=currentProfile(); if(!p) return;
@@ -910,7 +973,7 @@ $('shareBtn').onclick=async()=>{
 $('resetBtn').onclick=()=>{
   let p=currentProfile(); if(!p) return;
   if(!confirm('This will reset your points, switches and badges. Continue?')) return;
-  Object.assign(p,{points:0,streak:1,switches:0,impact:0,done:[],days:[0,0,0,0,0,0,0]});
+  Object.assign(p,{resetAt:Date.now(),points:0,streak:0,switches:0,impact:0,done:[],days:[0,0,0,0,0,0,0]});
   save();
   render();
   toast('Progress reset \u2014 fresh start!');
@@ -929,20 +992,17 @@ document.querySelectorAll('.switcher button').forEach(b=>b.onclick=()=>{
 // has run out of free space in the browser's storage (videos are much
 // heavier than compressed photos): in that case the addition is rolled back
 // and the user is warned, instead of silently losing progress.
-function addMedia(type,src){
-  db.photos.unshift({type,src});
-  if(db.photos.length>24) db.photos.length=24;
+async function addMedia(type,src){
+  const p=currentProfile();if(!p?.uid||p.role==='teacher')return;
+  if(!safeMedia({type,src})||src.length>7000000){toast('Choose a supported image or a video smaller than 5 MB.',true);return;}
   try{
-    save();
-    renderGallery();
-    toast(type==='video'?'Video added to the Wall \ud83c\udfa5':'Photo added to the Wall \ud83d\udcf8');
-  }catch(e){
-    db.photos.shift();
-    toast('Not enough space on this device to save this file: try a shorter video or a photo.',true);
-  }
+    await GreenCloud.json('wall/v1/'+p.schoolId+'/'+crypto.randomUUID(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,src,ownerId:p.uid,createdAt:Date.now()})});
+    if(currentProfile()?.uid!==p.uid)return;
+    await loadSharedWall();toast('Published on your school’s shared Wall.');
+  }catch(e){toast('Upload not confirmed. Check your connection and retry.',true);}
 }
 
-const MAX_VIDEO_MB=20;
+const MAX_VIDEO_MB=5;
 $('photo').onchange=e=>{
   let f=e.target.files[0];
   e.target.value='';
@@ -986,3 +1046,12 @@ $('photo').onchange=e=>{
 };
 
 boot();
+$('role').onchange=()=>{$('class').placeholder=$('role').value==='teacher'?'Classes you monitor (optional)':'Class, e.g. 4A';};
+
+window.addEventListener('online',()=>{const p=currentProfile();if(p&&p.pendingSync)syncProfileToCloud(p).then(loadCloudStudents);});
+setInterval(()=>{const p=currentProfile();if(p&&p.pendingSync&&navigator.onLine)syncProfileToCloud(p).then(loadCloudStudents);},30000);
+
+setInterval(()=>{if(currentProfile()&&!document.hidden){if($('wall').classList.contains('active'))loadSharedWall();if($('rankings').classList.contains('active'))loadCloudStudents();}},5000);
+
+let displayedCalendarDay=calendarDay(new Date());
+setInterval(()=>{const day=calendarDay(new Date());if(day!==displayedCalendarDay){displayedCalendarDay=day;if(currentProfile())render();}},30000);
