@@ -410,7 +410,7 @@ async function syncProfileToCloud(p){
         if(!before.ok)throw new Error('Profile read rejected.');
         const remote=await before.json(),version=JSON.stringify({done:p.done,resetAt:p.resetAt});
         const merged=mergeProgress(p,remote);
-        const privateData={f:p.f,l:p.l,c:p.c,sc:p.sc,uid,schoolId:p.schoolId,role:merged.role,done:merged.done,points:merged.points,switches:merged.switches,impact:merged.impact,resetAt:merged.resetAt,updatedAt:Date.now()};
+        const privateData={f:p.f,l:p.l,c:p.c,sc:p.sc,uid,schoolId:p.schoolId,role:merged.role,done:merged.done,points:merged.points,switches:merged.switches,impact:merged.impact,resetAt:merged.resetAt||0,updatedAt:Date.now()};
         const write=await GreenCloud.fetch(FIREBASE_DB_URL+'/users/'+uid+'.json',{method:'PUT',headers:{'Content-Type':'application/json','if-match':before.headers.get('etag')},body:JSON.stringify(privateData)});
         if(write.status===412)continue;
         if(!write.ok)throw new Error('Profile save rejected.');
@@ -447,7 +447,7 @@ async function loadCloudStudents(){
 function profileKey(f,l,c,sc,role='student'){return (f+'|'+l+'|'+c+'|'+sc).toLowerCase().trim()+(role==='teacher'?'|teacher':'')}
 
 function freshProfile(f,l,c,sc,passHash){
-  return {f,l,c,sc,pass:passHash||null,points:0,streak:0,switches:0,impact:0,done:[],days:[0,0,0,0,0,0,0]};
+  return {f,l,c,sc,pass:passHash||null,resetAt:0,points:0,streak:0,switches:0,impact:0,done:[],days:[0,0,0,0,0,0,0]};
 }
 
 function calendarDay(date){return Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())/86400000;}
@@ -544,10 +544,10 @@ function boot(){
   render();
   page('home');
   forceScrollTop();
-  sharedWall=[];loadSharedWall();
+  sharedWall=[];renderGallery();
   loadGlobalCount();
   loadCloudStudents();
-  syncProfileToCloud(p).then(loadCloudStudents);
+  syncProfileToCloud(p).then(ok=>{loadCloudStudents();if(ok)loadSharedWall();});
 }
 
 function page(p){
