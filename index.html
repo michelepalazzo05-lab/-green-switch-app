@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261006-6">
 </head>
 <body>
 
@@ -23,6 +23,8 @@
       <svg viewBox="0 0 24 24"><path d="M12 4v14m0 0l-6-6m6 6l6-6" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <form id="form">
+      <label for="role">I am a</label>
+      <select id="role" aria-label="Student or teacher"><option value="student">Student</option><option value="teacher">Teacher · view and monitor</option></select>
       <input id="first" placeholder="First name" autocomplete="given-name">
       <input id="last" placeholder="Last name" autocomplete="family-name">
       <input id="class" placeholder="Class, e.g. 4A" autocomplete="off">
@@ -62,10 +64,12 @@
     <button data-p="missions"><i>🎯</i>Missions</button>
     <button data-p="rankings"><i>🏆</i>Leaderboard</button>
     <button data-p="wall"><i>🖼️</i>Wall</button>
+    <button data-p="exchange"><i>♻️</i>Exchange</button>
     <button data-p="profile"><i>👤</i>Profile</button>
   </nav>
 
   <main>
+    <p id="teacherNotice" class="exchangeHint" hidden>Teacher view · Monitor your school’s activity. Teachers do not earn points or appear in the leaderboard.</p>
     <section id="home" class="page">
       <div class="hero">
         <div>
@@ -151,6 +155,36 @@
       <div id="gallery" class="gallery"></div>
     </section>
 
+    <section id="exchange" class="page">
+      <div class="exchangeHero">
+        <div><small>GIVE THINGS A SECOND LIFE</small><h2>Switch Exchange.</h2><p>Pass on what you no longer use. Find what you need.<br>Small exchanges. Less waste. One school community.</p></div>
+        <button id="exchangeOffer" class="exchangePrimary" type="button">+ Offer an item</button>
+      </div>
+      <div class="exchangeSummary"><span aria-hidden="true">♻️</span><div><b id="exchangeCount">0</b> items reused at school<small>Only handovers confirmed by both students count.</small></div></div>
+      <div class="exchangeSchoolRow"><b id="exchangeSchool"></b><span id="exchangeConnection">Connecting…</span><button id="exchangeRefresh" type="button">Refresh</button></div>
+      <p id="exchangeMessage" class="exchangeMessage" role="status" aria-live="polite"></p>
+      <form id="exchangeForm" class="exchangeForm" hidden>
+        <h3>Give an item a second life.</h3>
+        <div class="exchangeFields">
+          <label for="exchangeTitle">Item name<input id="exchangeTitle" name="title" maxlength="70" required placeholder="e.g. Scientific calculator"></label>
+          <label for="exchangeFormCategory">Category<select id="exchangeFormCategory" name="category"><option value="books">Books</option><option value="supplies">School supplies</option></select></label>
+          <label for="exchangeCondition">Condition<select id="exchangeCondition" name="condition"><option>Good condition</option><option>Like new</option><option>Used, fully functional</option></select></label>
+          <label for="exchangePoint">School collection point<input id="exchangePoint" name="point" maxlength="70" required placeholder="A point agreed at your school"></label>
+          <label for="exchangeDescription" class="exchangeFull">Description<textarea id="exchangeDescription" name="description" rows="3" maxlength="300" required placeholder="Describe your item and anything the next student should know."></textarea></label>
+          <label for="exchangePhoto" class="exchangeFull">Item photo (optional)<input id="exchangePhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        </div>
+        <p class="exchangeHint">Free exchanges within your school. Use photos of the object and school collection points; do not include personal contact details. Photos are compressed before online storage.</p>
+        <div class="exchangeActions"><button id="exchangePublish" type="submit" class="exchangePrimary" disabled>Publish to school board →</button><button id="exchangeCancelForm" type="button" class="exchangeSecondary">Close</button></div>
+      </form>
+      <div class="exchangeTools">
+        <div class="exchangeTabs" aria-label="Exchange views"><button data-exchange-view="board" aria-pressed="true" type="button">School board</button><button data-exchange-view="mine" aria-pressed="false" type="button">My exchanges</button></div>
+        <label for="exchangeSearch">Search<input id="exchangeSearch" type="search" placeholder="Find an item"></label>
+        <label for="exchangeCategory">Category<select id="exchangeCategory"><option value="all">All items</option><option value="books">Books</option><option value="supplies">School supplies</option></select></label>
+      </div>
+      <div id="exchangeGrid" class="exchangeGrid"></div>
+      <p class="exchangeHint">Offers are saved online and shared with your school. No points are awarded for posting. Keep the same profile details and password to manage your offers on another device.</p>
+    </section>
+
     <section id="profile" class="page">
       <div class="profile">
         <div id="avatar">GS</div>
@@ -181,7 +215,12 @@
 
 <div id="toast"></div>
 <div id="confetti"></div>
+<dialog id="exchangeDetail" aria-labelledby="exchangeDetailTitle"><button id="exchangeCloseDetail" type="button" class="exchangeSecondary">Close</button><div id="exchangeDetailContent"></div></dialog>
 
-<script src="app.js"></script>
+<script src="cloud.js?v=20261006-6"></script>
+<script src="app.js?v=20261006-6"></script>
+<script src="exchange-store.js?v=20261006-6"></script>
+<script src="exchange.js?v=20261006-6"></script>
 </body>
 </html>
+
