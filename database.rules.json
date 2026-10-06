@@ -1,0 +1,103 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['uid','f','l','c','sc','schoolId','role','points','switches','resetAt']) && newData.child('uid').val() === auth.uid && (newData.child('role').val() === 'student' || newData.child('role').val() === 'teacher') && (!data.exists() || (newData.child('role').val() === data.child('role').val() && newData.child('schoolId').val() === data.child('schoolId').val())) && newData.child('points').isNumber() && newData.child('points').val() >= 0 && newData.child('points').val() <= 10000000 && newData.child('switches').isNumber() && newData.child('switches').val() >= 0 && newData.child('f').isString() && newData.child('f').val().length <= 70 && newData.child('l').isString() && newData.child('l').val().length <= 70 && newData.child('c').isString() && newData.child('c').val().length <= 70 && newData.child('sc').isString() && newData.child('sc').val().length <= 120 && newData.child('schoolId').isString() && newData.child('schoolId').val().length === 64 && (newData.child('role').val() !== 'teacher' || (newData.child('points').val() === 0 && newData.child('switches').val() === 0))"
+      }
+    },
+    "students": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.child('uid').val() === auth.uid && newData.child('role').val() === root.child('users').child(auth.uid).child('role').val() && newData.child('points').val() === root.child('users').child(auth.uid).child('points').val() && newData.child('switches').val() === root.child('users').child(auth.uid).child('switches').val() && newData.child('schoolId').val() === root.child('users').child(auth.uid).child('schoolId').val() && newData.child('f').isString() && newData.child('f').val().length <= 70 && newData.child('l').isString() && newData.child('l').val().length <= 2 && newData.child('c').isString() && newData.child('c').val().length <= 70 && newData.child('sc').isString() && newData.child('sc').val().length <= 120"
+      }
+    },
+    "exchange": {
+      "v1": {
+        "schools": {
+          "$school": {
+            "items": {
+              ".read": "auth != null && root.child('users').child(auth.uid).child('schoolId').val() === $school",
+              "$item": {
+                ".write": "(auth != null && root.child('users').child(auth.uid).child('schoolId').val() === $school && root.child('users').child(auth.uid).child('role').val() === 'student' && newData.exists() && ((!data.exists() && newData.child('ownerId').val() === auth.uid && newData.child('status').val() === 'available' && !newData.child('buyerId').exists() && newData.child('ownerConfirmed').val() === false && newData.child('buyerConfirmed').val() === false) || (data.child('status').val() === 'available' && !(data.child('ownerId').val() === auth.uid) && newData.child('status').val() === 'reserved' && newData.child('buyerId').val() === auth.uid && newData.child('ownerConfirmed').val() === false && newData.child('buyerConfirmed').val() === false) || (data.child('status').val() === 'available' && data.child('ownerId').val() === auth.uid && newData.child('status').val() === 'withdrawn' && !newData.child('buyerId').exists() && newData.child('ownerConfirmed').val() === false && newData.child('buyerConfirmed').val() === false) || (data.child('status').val() === 'reserved' && (data.child('ownerId').val() === auth.uid || data.child('buyerId').val() === auth.uid) && data.child('ownerConfirmed').val() === false && data.child('buyerConfirmed').val() === false && newData.child('status').val() === 'available' && !newData.child('buyerId').exists() && newData.child('ownerConfirmed').val() === false && newData.child('buyerConfirmed').val() === false) || (data.child('status').val() === 'reserved' && newData.child('buyerId').val() === data.child('buyerId').val() && ((data.child('ownerId').val() === auth.uid && newData.child('ownerConfirmed').val() === true && newData.child('buyerConfirmed').val() === data.child('buyerConfirmed').val()) || (data.child('buyerId').val() === auth.uid && newData.child('buyerConfirmed').val() === true && newData.child('ownerConfirmed').val() === data.child('ownerConfirmed').val())) && ((newData.child('ownerConfirmed').val() === true && newData.child('buyerConfirmed').val() === true && newData.child('status').val() === 'completed') || ((newData.child('ownerConfirmed').val() !== true || newData.child('buyerConfirmed').val() !== true) && newData.child('status').val() === 'reserved'))))) || (auth != null && root.child('users').child(auth.uid).child('schoolId').val() === $school && root.child('users').child(auth.uid).child('role').val() === 'student' && !newData.exists() && data.child('ownerId').val() === auth.uid)",
+                ".validate": "newData.hasChildren(['ownerId','title','description','point','category','condition','ownerName','ownerClass','status','createdAt','ownerConfirmed','buyerConfirmed'])",
+                "ownerId": {
+                  ".validate": "newData.isString() && newData.val().length <= 128 && (!data.exists() || newData.val() === data.val())"
+                },
+                "title": {
+                  ".validate": "newData.isString() && newData.val().length <= 70 && (!data.exists() || newData.val() === data.val())"
+                },
+                "description": {
+                  ".validate": "newData.isString() && newData.val().length <= 300 && (!data.exists() || newData.val() === data.val())"
+                },
+                "point": {
+                  ".validate": "newData.isString() && newData.val().length <= 70 && (!data.exists() || newData.val() === data.val())"
+                },
+                "category": {
+                  ".validate": "newData.isString() && newData.val().length <= 20 && (!data.exists() || newData.val() === data.val())"
+                },
+                "condition": {
+                  ".validate": "newData.isString() && newData.val().length <= 40 && (!data.exists() || newData.val() === data.val())"
+                },
+                "ownerName": {
+                  ".validate": "newData.isString() && newData.val().length <= 80 && (!data.exists() || newData.val() === data.val())"
+                },
+                "ownerClass": {
+                  ".validate": "newData.isString() && newData.val().length <= 70 && (!data.exists() || newData.val() === data.val())"
+                },
+                "buyerId": {
+                  ".validate": "newData.isString() && newData.val().length <= 128"
+                },
+                "buyerName": {
+                  ".validate": "newData.isString() && newData.val().length <= 80"
+                },
+                "buyerClass": {
+                  ".validate": "newData.isString() && newData.val().length <= 70"
+                },
+                "photo": {
+                  ".validate": "newData.isString() && newData.val().length <= 190000 && (!data.exists() || newData.val() === data.val())"
+                },
+                "status": {
+                  ".validate": "newData.isString() && newData.val().length <= 20"
+                },
+                "createdAt": {
+                  ".validate": "newData.isNumber() && newData.val() <= now + 60000 && (!data.exists() || newData.val() === data.val())"
+                },
+                "updatedAt": {
+                  ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+                },
+                "completedAt": {
+                  ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+                },
+                "ownerConfirmed": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "buyerConfirmed": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "wall": {
+      "v1": {
+        "$school": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('schoolId').val() === $school",
+          "$item": {
+            ".write": "(auth != null && root.child('users').child(auth.uid).child('schoolId').val() === $school && root.child('users').child(auth.uid).child('role').val() === 'student' && newData.exists() && ((!data.exists() && newData.child('ownerId').val() === auth.uid) || (data.child('ownerId').val() === auth.uid && newData.child('ownerId').val() === data.child('ownerId').val() && newData.child('src').val() === data.child('src').val()))) || (auth != null && root.child('users').child(auth.uid).child('schoolId').val() === $school && root.child('users').child(auth.uid).child('role').val() === 'student' && !newData.exists() && data.child('ownerId').val() === auth.uid)",
+            ".validate": "newData.hasChildren(['ownerId','src','type','createdAt']) && newData.child('src').isString() && newData.child('src').val().length <= 7000000 && (newData.child('type').val() === 'image' || newData.child('type').val() === 'video') && newData.child('createdAt').isNumber()"
+          }
+        }
+      }
+    }
+  }
+}
